@@ -1,21 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getConnection, sql } from '@/lib/db';
+import { getEventSeatMap } from '@/lib/models/Event';
 
 export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
     try {
         const params = await props.params;
-        const id = params.id;
-        const pool = await getConnection();
+        const eventId = params.id;
+        if (!eventId) return NextResponse.json({ error: 'Event ID required' }, { status: 400 });
 
-        // Call the table-valued function
-        const result = await pool.request()
-            .input('EventId', sql.UniqueIdentifier, id)
-            .query('SELECT * FROM GetEventSeatMap(@EventId)');
-
-        return NextResponse.json(result.recordset);
-
+        const seats = await getEventSeatMap(eventId);
+        return NextResponse.json(seats);
     } catch (error: any) {
-        console.error('Get seat map error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        console.error('Get seats error:', error);
+        return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
     }
 }

@@ -68,7 +68,7 @@ export async function POST(req: Request) {
         let totalAmount = 0;
 
         for (const seat of seats) {
-            if (seat.status !== 'FREE') {
+            if (seat.status !== 'AVAILABLE') {
                 throw new Error(`Seat at Row ${seat.y_coordinate}, Col ${seat.x_coordinate} is not available.`);
             }
             totalAmount += seat.price; // price comes from join
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
         const paymentRes = await paymentReq.query(`
             INSERT INTO Payment (amount, payment_date, method)
-            OUTPUT INSERTED.*
+            OUTPUT INSERTED.id
             VALUES (@amount, @payment_date, @method)
         `);
         const payment = paymentRes.recordset[0];
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
             updateSeatReq.input('userId', sql.UniqueIdentifier, user!.id);
             updateSeatReq.query(`
                 UPDATE Seat 
-                SET status = 'PAID', user_id = @userId 
+                SET status = 'BOOKED', user_id = @userId 
                 WHERE id = @seatId
             `);
 
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
             ticketReq.input('paymentId', sql.UniqueIdentifier, payment.id);
             const ticketRes = await ticketReq.query(`
                 INSERT INTO Ticket (seat_id, payment_id)
-                OUTPUT INSERTED.*
+                OUTPUT INSERTED.id
                 VALUES (@seatId, @paymentId)
             `);
             const ticket = ticketRes.recordset[0];

@@ -15,7 +15,7 @@ export async function PATCH(req: Request, props: { params: Promise<{ id: string 
             return NextResponse.json({ error: 'Status is required' }, { status: 400 });
         }
 
-        const validStatuses = ['DRAFT', 'PENDING', 'VERIFY', 'PUBLISHED'];
+        const validStatuses = ['DRAFT', 'PENDING', 'VERIFY', 'PUBLISHED', 'CANCELLED'];
         if (!validStatuses.includes(status)) {
             return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
         }
@@ -31,10 +31,12 @@ export async function PATCH(req: Request, props: { params: Promise<{ id: string 
 
     } catch (error: any) {
         console.error('Update status error:', error);
-        // Check for specific trigger errors (e.g. generation failed)
-        if (error.message && error.message.includes('TRIGGER')) {
-            return NextResponse.json({ error: 'State transition failed: ' + error.message }, { status: 500 });
-        }
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+
+        // Return more detailed error for debugging
+        return NextResponse.json({
+            error: 'Update failed',
+            message: error.message,
+            details: error.precedingErrors || error.originalError?.message || error.toString()
+        }, { status: 500 });
     }
 }

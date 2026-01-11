@@ -47,10 +47,10 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleAction = async (eventId: string, action: 'VERIFY' | 'DRAFT') => {
+    const handleAction = async (eventId: string, action: 'VERIFY' | 'CANCELLED') => {
         const confirmMsg = action === 'VERIFY'
             ? 'Approve this event? (Seats will be generated)'
-            : 'Deny this event? (Will return to Draft)';
+            : 'Deny this event? (Status will be set to CANCELLED)';
 
         if (!confirm(confirmMsg)) return;
 
@@ -65,11 +65,12 @@ export default function AdminDashboard() {
                 alert(action === 'VERIFY' ? 'Event Verified!' : 'Event Denied');
                 fetchPendingEvents();
             } else {
-                alert('Action failed');
+                const errorData = await res.json();
+                alert(`Action failed: ${errorData.message || errorData.error || 'Server error'}`);
             }
         } catch (err) {
             console.error(err);
-            alert('An error occurred');
+            alert('An error occurred. Check console for details.');
         }
     };
 
@@ -108,7 +109,7 @@ export default function AdminDashboard() {
                                 </div>
                                 <div className="flex gap-3">
                                     <button
-                                        onClick={() => handleAction(event.id, 'DRAFT')}
+                                        onClick={() => handleAction(event.id, 'CANCELLED')}
                                         className="px-4 py-2 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded-lg font-bold transition"
                                     >
                                         Deny

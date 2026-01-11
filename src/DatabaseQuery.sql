@@ -76,7 +76,7 @@ CREATE TABLE Event (
                        CONSTRAINT FK_Event_Organizer
                            FOREIGN KEY (organizer_id) REFERENCES [User](id),
                        CONSTRAINT CK_Event_Status
-                           CHECK (status IN ('DRAFT', 'PENDING' ,'VERIFY', 'PUBLISHED'))
+                           CHECK (status IN ('DRAFT', 'PENDING' ,'VERIFY', 'PUBLISHED', 'CANCELLED'))
 );
 
 -- =========================
@@ -293,27 +293,31 @@ CREATE TRIGGER TR_Event_Verify_GenerateSeats
 BEGIN
     SET NOCOUNT ON;
 
+    DECLARE @EventsToProcess TABLE (id UNIQUEIDENTIFIER, rows INT, columns INT);
+
+    INSERT INTO @EventsToProcess (id, rows, columns)
     SELECT i.id, i.rows, i.columns
-    INTO #EventsToProcess
     FROM inserted i
              JOIN deleted d ON i.id = d.id
     WHERE i.status = 'VERIFY'
       AND d.status <> 'VERIFY';
 
-    IF NOT EXISTS (SELECT 1 FROM #EventsToProcess) RETURN;
+    IF NOT EXISTS (SELECT 1 FROM @EventsToProcess) RETURN;
 
-    DELETE e
-    FROM #EventsToProcess e
-    WHERE EXISTS (SELECT 1 FROM Seat s WHERE s.event_id = e.id);
+    -- Remove events that already have seats (to be safe)
+    -- Since we can't DELETE from a table variable in some versions easily with JOIN, we use simpler way
+    -- Actually DELETE from @tb WHERE ... is fine.
+    DELETE FROM @EventsToProcess
+    WHERE id IN (SELECT event_id FROM Seat);
 
-    IF NOT EXISTS (SELECT 1 FROM #EventsToProcess) RETURN;
+    IF NOT EXISTS (SELECT 1 FROM @EventsToProcess) RETURN;
 
     DECLARE @EventId UNIQUEIDENTIFIER;
     DECLARE @Rows INT;
     DECLARE @Cols INT;
 
     DECLARE event_cursor CURSOR LOCAL FAST_FORWARD FOR
-        SELECT id, rows, columns FROM #EventsToProcess;
+        SELECT id, rows, columns FROM @EventsToProcess;
 
     OPEN event_cursor;
     FETCH NEXT FROM event_cursor INTO @EventId, @Rows, @Cols;
@@ -356,8 +360,6 @@ BEGIN
 
     CLOSE event_cursor;
     DEALLOCATE event_cursor;
-
-    DROP TABLE #EventsToProcess;
 END;
 GO
 
@@ -518,11 +520,13 @@ CREATE FUNCTION GetEventSeatMap
         RETURN
         (
         SELECT
+            s.id,
             s.id AS seat_id,
             s.x_coordinate,
             s.y_coordinate,
             s.status,
             s.user_id,
+            s.seat_type_id,
             st.name AS seat_type,
             st.price
         FROM Seat s
@@ -931,6 +935,12 @@ BEGIN TRY
 
     PRINT '> Seats Generated: ' + CAST(@SeatCount AS NVARCHAR(10)) + ' (Expected: 9)';
 
+    -- 4.5 Set price for Default Seats
+    PRINT '> Setting price for Default Seat Type...';
+    DECLARE @DefaultSeatTypeId UNIQUEIDENTIFIER;
+    SELECT @DefaultSeatTypeId = id FROM SeatType WHERE event_id = @EventID AND name = 'DEFAULT SEAT';
+    EXEC UpdateSeatType @seat_type_id = @DefaultSeatTypeId, @event_id = @EventID, @price = 50.00;
+
     -- 5. Create VIP Seat Type
     PRINT '> Creating VIP Seat Type...';
     EXEC CreateSeatType @event_id = @EventID, @name = 'VIP', @price = 150.00;
@@ -942,7 +952,7 @@ BEGIN TRY
          @event_id = @EventID,
          @seat_type_name = 'VIP',
          @x1 = 1, @y1 = 1,
-         @x2 = 1, @y2 = 3; -- Row 1, Cols 1-3
+         @x2 = 3, @y2 = 1; -- Row 1 (y=1), Cols 1-3 (x=1,2,3)
 
     -- 7. Publish Event
     PRINT '> Publishing Event...';
@@ -978,7 +988,7 @@ BEGIN TRY
          @user_id = @CustomerID,
          @seat_ids = @SeatList,
          @payment_method = 'CREDIT_CARD',
-         @amount = 200.00;
+         @amount = 100.00; -- Changed from 200.00 (2 seats * 50.00 default price)
 
     -- Verify Booked
     SELECT x_coordinate, y_coordinate, status

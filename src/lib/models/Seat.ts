@@ -34,9 +34,13 @@ export const createSeat = async (seat: Omit<Seat, 'id'>): Promise<Seat> => {
         .input('user_id', sql.UniqueIdentifier, seat.user_id || null)
         .input('status', sql.NVarChar(50), seat.status)
         .query(`
+            DECLARE @InsertedSeat TABLE (id UNIQUEIDENTIFIER);
+            
             INSERT INTO Seat (event_id, x_coordinate, y_coordinate, seat_type_id, user_id, status)
-            OUTPUT INSERTED.*
-            VALUES (@event_id, @x_coordinate, @y_coordinate, @seat_type_id, @user_id, @status)
+            OUTPUT INSERTED.id INTO @InsertedSeat
+            VALUES (@event_id, @x_coordinate, @y_coordinate, @seat_type_id, @user_id, @status);
+            
+            SELECT s.* FROM Seat s JOIN @InsertedSeat i ON s.id = i.id;
         `);
     return result.recordset[0] as Seat;
 };
@@ -58,8 +62,9 @@ export const updateSeat = async (id: string, fields: Partial<Omit<Seat, 'id'>>):
     const query = `
         UPDATE Seat
         SET ${updates.join(', ')}
-        OUTPUT INSERTED.*
-        WHERE id = @id
+        WHERE id = @id;
+        
+        SELECT * FROM Seat WHERE id = @id;
     `;
 
     const result = await request.query(query);

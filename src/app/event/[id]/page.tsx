@@ -28,6 +28,7 @@ interface Seat {
 export default function EventDetails({ params }: { params: { id: string } }) {
     const [event, setEvent] = useState<Event | null>(null);
     const [seats, setSeats] = useState<Seat[]>([]);
+    const [seatTypes, setSeatTypes] = useState<any[]>([]);
     const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
@@ -75,6 +76,13 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                 const seatRes = await fetch(`/api/events/${eventId}/seats`);
                 const seatData = await seatRes.json();
                 setSeats(seatData);
+
+                // Fetch Seat Types for Legend
+                const typesRes = await fetch(`/api/events/${eventId}/seat-types`);
+                if (typesRes.ok) {
+                    const typesData = await typesRes.json();
+                    setSeatTypes(typesData);
+                }
 
                 // Calculate grid
                 if (seatData.length > 0) {
@@ -153,6 +161,30 @@ export default function EventDetails({ params }: { params: { id: string } }) {
     // Group seats by row (x) for rendering if we want row-based, 
     // but Grid is easier with just x/y. 
     // Assuming x=Row, y=Col.
+
+    const getHashColor = (str: string, type: 'bg' | 'border' | 'text' = 'text') => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        // Use Golden Angle for much better hue distribution
+        const h = (Math.abs(hash) * 137.5) % 360;
+
+        if (type === 'bg') return `hsl(${h}, 85%, 96%)`;
+        if (type === 'border') return `hsl(${h}, 70%, 80%)`;
+        return `hsl(${h}, 80%, 30%)`;
+    };
+
+    const getRowLabel = (y: number) => {
+        let label = '';
+        let num = y;
+        while (num > 0) {
+            let rem = (num - 1) % 26;
+            label = String.fromCharCode(65 + rem) + label;
+            num = Math.floor((num - 1) / 26);
+        }
+        return label;
+    };
 
     if (loading) return <div className="p-10 text-center">Loading...</div>;
     if (!event) return <div className="p-10 text-center">Event not found</div>;
@@ -260,11 +292,26 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                         </div>
 
                         {/* Legend */}
-                        <div className="flex gap-4 text-sm flex-wrap text-gray-700 font-medium">
-                            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-green-500"></div> Available</div>
-                            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-blue-600"></div> Selected</div>
-                            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-yellow-400"></div> Your Hold</div>
-                            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-red-400"></div> Taken</div>
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Pricing & Status</h4>
+                            <div className="flex gap-4 text-sm flex-wrap text-gray-700 font-medium bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-green-500"></div> Available</div>
+                                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-blue-600"></div> Selected</div>
+                                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-yellow-400"></div> Your Hold</div>
+                                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-red-400"></div> Taken</div>
+
+                                {/* Dynamic Price Tiers */}
+                                {seatTypes.map(st => {
+                                    return (
+                                        <div key={st.id} className="flex items-center gap-2">
+                                            <div className="w-5 h-5 rounded bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-black text-gray-500">
+                                                {st.name.substring(0, 1)}
+                                            </div>
+                                            {st.name === 'DEFAULT SEAT' ? 'Normal' : st.name}
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
 
@@ -274,50 +321,92 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                             Stage
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <div
-                                className="grid gap-2 mx-auto"
-                                style={{
-                                    gridTemplateColumns: `repeat(${maxY}, minmax(40px, 1fr))`,
-                                    width: 'fit-content'
-                                }}
-                            >
-                                {Array.from({ length: maxX }).map((_, rIndex) => {
-                                    const rowNum = rIndex + 1;
-                                    return Array.from({ length: maxY }).map((_, cIndex) => {
-                                        const colNum = cIndex + 1;
-                                        const seat = seats.find(s => s.x_coordinate === rowNum && s.y_coordinate === colNum);
+                        <div className="overflow-x-auto pb-4">
+                            <div className="relative inline-block mx-auto mt-4">
+                                {/* Column Headers (Numbers) */}
+                                <div
+                                    className="grid mb-3"
+                                    style={{
+                                        gridTemplateColumns: `repeat(${maxY}, 40px)`,
+                                        gap: '8px',
+                                        paddingLeft: '48px' // Offset for row labels
+                                    }}
+                                >
+                                    {Array.from({ length: maxY }, (_, i) => (
+                                        <div key={i} className="text-[10px] font-black text-gray-300 text-center uppercase tracking-tighter">
+                                            {i + 1}
+                                        </div>
+                                    ))}
+                                </div>
 
-                                        if (!seat) return <div key={`${rowNum}-${colNum}`} className="w-10 h-10"></div>;
-
-                                        const isSelected = selectedSeats.includes(seat.seat_id);
-                                        const isMyHold = seat.status === 'ON_HOLD' && currentUser && seat.user_id === currentUser.id;
-                                        const isAvailable = seat.status === 'AVAILABLE';
-
-                                        let bgClass = "bg-gray-300 cursor-not-allowed"; // Default Taken
-                                        if (isAvailable) bgClass = "bg-green-500 hover:bg-green-600 cursor-pointer";
-                                        if (isSelected) bgClass = "bg-blue-600 ring-2 ring-blue-300 transform scale-105";
-                                        if (isMyHold) bgClass = "bg-yellow-400 cursor-pointer ring-2 ring-yellow-200"; // My hold
-                                        if (seat.status === 'BOOKED') bgClass = "bg-red-400 cursor-not-allowed";
-
-                                        // If someone else holds it
-                                        if (seat.status === 'ON_HOLD' && !isMyHold) bgClass = "bg-gray-400 cursor-not-allowed opacity-50";
-
-                                        return (
-                                            <div
-                                                key={seat.seat_id}
-                                                onClick={() => handleSeatClick(seat)}
-                                                className={`
-                                                    w-10 h-10 rounded-t-lg rounded-b-md flex items-center justify-center text-xs text-white font-medium transition-all shadow-sm
-                                                    ${bgClass}
-                                                `}
-                                                title={`Row ${rowNum}, Seat ${colNum} - ${seat.seat_type} ($${seat.price}) ${isMyHold ? '(Reserved by you)' : ''}`}
-                                            >
-                                                {colNum}
+                                <div className="flex">
+                                    {/* Row Headers (Letters) */}
+                                    <div
+                                        className="grid mr-2"
+                                        style={{
+                                            gridTemplateRows: `repeat(${maxX}, 40px)`,
+                                            gap: '8px'
+                                        }}
+                                    >
+                                        {Array.from({ length: maxX }, (_, i) => (
+                                            <div key={i} className="w-10 flex items-center justify-end text-[10px] font-black text-gray-300 pr-2 uppercase">
+                                                {getRowLabel(i + 1)}
                                             </div>
-                                        );
-                                    });
-                                })}
+                                        ))}
+                                    </div>
+
+                                    {/* Actual Seat Grid */}
+                                    <div
+                                        className="grid gap-2"
+                                        style={{
+                                            gridTemplateColumns: `repeat(${maxY}, 40px)`,
+                                            width: 'fit-content'
+                                        }}
+                                    >
+                                        {Array.from({ length: maxX }).map((_, rIndex) => {
+                                            const rowNum = rIndex + 1;
+                                            return Array.from({ length: maxY }).map((_, cIndex) => {
+                                                const colNum = cIndex + 1;
+                                                const seat = seats.find(s => s.x_coordinate === rowNum && s.y_coordinate === colNum);
+
+                                                if (!seat) return <div key={`${rowNum}-${colNum}`} className="w-10 h-10"></div>;
+
+                                                const isSelected = selectedSeats.includes(seat.seat_id);
+                                                const isMyHold = seat.status === 'ON_HOLD' && currentUser && seat.user_id === currentUser.id;
+                                                const isAvailable = seat.status === 'AVAILABLE';
+
+                                                let bgClass = "bg-gray-300 cursor-not-allowed"; // Default Taken
+                                                if (isAvailable) {
+                                                    bgClass = "bg-green-500 hover:bg-green-600 cursor-pointer text-white";
+                                                }
+                                                if (isSelected) {
+                                                    bgClass = "bg-blue-600 ring-2 ring-blue-300 transform scale-105 text-white z-10";
+                                                }
+                                                if (isMyHold) {
+                                                    bgClass = "bg-yellow-400 cursor-pointer ring-2 ring-yellow-200 text-white z-10"; // My hold
+                                                }
+                                                if (seat.status === 'BOOKED') bgClass = "bg-red-400 cursor-not-allowed text-white";
+
+                                                // If someone else holds it
+                                                if (seat.status === 'ON_HOLD' && !isMyHold) bgClass = "bg-gray-400 cursor-not-allowed opacity-50 text-white";
+
+                                                return (
+                                                    <div
+                                                        key={seat.seat_id}
+                                                        onClick={() => handleSeatClick(seat)}
+                                                        className={`
+                                                            w-10 h-10 rounded-t-lg rounded-b-md flex items-center justify-center text-xs font-bold transition-all shadow-sm
+                                                            ${bgClass}
+                                                        `}
+                                                        title={`Row ${getRowLabel(rowNum)}, Col ${colNum} - ${seat.seat_type} ($${seat.price}) ${isMyHold ? '(Reserved by you)' : ''}`}
+                                                    >
+                                                        {seat.seat_type.substring(0, 1)}
+                                                    </div>
+                                                );
+                                            });
+                                        })}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

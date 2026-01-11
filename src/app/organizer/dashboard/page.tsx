@@ -75,6 +75,7 @@ export default function OrganizerDashboard() {
             case 'PENDING': return 'bg-yellow-100 text-yellow-800';
             case 'VERIFY': return 'bg-purple-100 text-purple-800';
             case 'PUBLISHED': return 'bg-green-100 text-green-800';
+            case 'CANCELLED': return 'bg-red-100 text-red-800';
             default: return 'bg-gray-100';
         }
     };
@@ -133,14 +134,25 @@ export default function OrganizerDashboard() {
                                     </div>
 
                                     <div className="flex items-center gap-3">
-                                        {(event.status === 'DRAFT' || event.status === 'PENDING' || event.status === 'VERIFY') ? (
+                                        {(event.status === 'DRAFT' || event.status === 'PENDING') && (
                                             <Link
                                                 href={`/organizer/edit/${event.id}`}
                                                 className="text-gray-600 hover:text-blue-600 text-sm font-medium border px-3 py-2 rounded-lg hover:border-blue-600 transition"
                                             >
                                                 Edit Event
                                             </Link>
-                                        ) : (
+                                        )}
+
+                                        {(event.status === 'VERIFY' || event.status === 'PUBLISHED') && (
+                                            <Link
+                                                href={`/organizer/manage-seats/${event.id}`}
+                                                className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-sm font-bold border border-indigo-200 px-3 py-2 rounded-lg transition"
+                                            >
+                                                Manage Seats
+                                            </Link>
+                                        )}
+
+                                        {event.status === 'PUBLISHED' && (
                                             <Link
                                                 href={`/event/${event.id}`}
                                                 className="text-gray-600 hover:text-blue-600 text-sm font-medium border px-3 py-2 rounded-lg hover:border-blue-600 transition"
