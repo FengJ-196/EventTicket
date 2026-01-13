@@ -9,5 +9,21 @@ export interface SeatTransaction {
     created_at?: Date;
 }
 
-// No Stored Procedures or Functions defined for SeatTransaction in the schema.
+export interface DetailedSeatTransaction {
+    id: string;
+    action: string;
+    created_at: Date;
+    user_name: string;
+    user_username: string;
+    event_name: string;
+    x_coordinate: number;
+    y_coordinate: number;
+    ticket_id?: string | null;
+}
 
+export const getSeatTransactions = async (): Promise<DetailedSeatTransaction[]> => {
+    const pool = await getConnection();
+    const result = await pool.request()
+        .query('SELECT * FROM GetSeatTransactions() ORDER BY created_at DESC');
+    return result.recordset as DetailedSeatTransaction[];
+};

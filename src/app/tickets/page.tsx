@@ -15,6 +15,7 @@ interface Ticket {
     seat_type: string;
     price: number;
     seat_status: string;
+    status: string;
     payment_date: string;
 }
 
@@ -123,7 +124,9 @@ export default function MyTicketsPage() {
                                     </div>
 
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-lg text-xs font-bold">PAID</span>
+                                        <span className={`px-2 py-1 rounded-lg text-xs font-bold ${ticket.status === 'VALID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                            {ticket.status === 'VALID' ? 'PAID' : 'REFUNDED'}
+                                        </span>
                                         <span className="text-gray-400 text-xs">Purchased: {new Date(ticket.payment_date).toLocaleDateString()}</span>
                                     </div>
 
@@ -131,15 +134,19 @@ export default function MyTicketsPage() {
                                         <div className="flex justify-between items-center">
                                             <span className="text-xs text-gray-400">ID: {ticket.seat_id.slice(0, 8)}...</span>
                                             <div className="flex gap-2">
-                                                {ticket.seat_status === 'BOOKED' && (
-                                                    <button
-                                                        onClick={() => handleRefund(ticket.ticket_id)}
-                                                        className="text-red-500 text-sm font-bold hover:underline px-2"
-                                                    >
-                                                        Refund
-                                                    </button>
+                                                {ticket.status === 'VALID' ? (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleRefund(ticket.ticket_id)}
+                                                            className="text-red-500 text-sm font-bold hover:underline px-2"
+                                                        >
+                                                            Refund
+                                                        </button>
+                                                        <button className="text-blue-600 text-sm font-bold hover:underline">Print Ticket</button>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-gray-400 text-xs italic px-2">No actions available</span>
                                                 )}
-                                                <button className="text-blue-600 text-sm font-bold hover:underline">Print Ticket</button>
                                             </div>
                                         </div>
                                     </div>
