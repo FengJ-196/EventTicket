@@ -3,7 +3,6 @@ GO
 
 -- Drop tables in reverse order of dependency to avoid Foreign Key errors
 DROP TABLE IF EXISTS SeatTransaction;
-DROP TABLE IF EXISTS Refund;
 DROP TABLE IF EXISTS Ticket;
 DROP TABLE IF EXISTS Payment;
 DROP TABLE IF EXISTS Seat;

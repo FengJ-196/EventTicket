@@ -126,7 +126,7 @@ BEGIN TRY
     SELECT event_name, seat_id, price, payment_date FROM ViewPurchasedTickets(@CustomerID);
 
     -- 13. Test Cancel Ticket (Refund)
-    PRINT '> Testing Ticket Cancellation & Refund...';
+    PRINT '> Testing Ticket Cancellation...';
 
     -- Pick a ticket to cancel (e.g., from the seats we just booked)
     DECLARE @TicketToCancel UNIQUEIDENTIFIER;
@@ -141,15 +141,11 @@ BEGIN TRY
 
     EXEC CancelTicket @ticket_id = @TicketToCancel, @user_id = @CustomerID;
 
-    -- Verify Ticket Cancelled
-    IF NOT EXISTS (SELECT 1 FROM Ticket WHERE id = @TicketToCancel AND status = 'CANCELLED')
-        THROW 50000, 'Ticket status not updated to CANCELLED', 1;
+    -- Verify Ticket Refunded
+    IF NOT EXISTS (SELECT 1 FROM Ticket WHERE id = @TicketToCancel AND status = 'REFUNDED')
+        THROW 50000, 'Ticket status not updated to REFUNDED', 1;
 
-    -- Verify Refund Record
-    IF NOT EXISTS (SELECT 1 FROM Refund WHERE ticket_id = @TicketToCancel AND amount > 0)
-        THROW 50000, 'Refund record not created', 1;
-
-    PRINT '> Ticket Cancelled and Refunded Successfully.';
+    PRINT '> Ticket Refunded Successfully.';
 
     -- 14. Test Expiry
     PRINT '> Testing Expiry Logic...';

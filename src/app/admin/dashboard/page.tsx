@@ -82,6 +82,7 @@ export default function AdminDashboard() {
                 <div className="font-bold text-xl tracking-tight">System<span className="text-red-500">Admin</span></div>
                 <div className="flex gap-4 items-center">
                     <Link href="/" className="text-gray-300 hover:text-white transition font-medium">Home</Link>
+                    <Link href="/admin/transactions" className="text-red-400 hover:text-red-300 transition font-medium border-l border-gray-700 pl-4">Transactions</Link>
                     <button
                         onClick={() => { localStorage.removeItem('user'); router.push('/login'); }}
                         className="text-red-400 hover:text-red-300 font-medium text-sm ml-4"

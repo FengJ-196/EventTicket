@@ -23,19 +23,23 @@ export async function POST(req: Request) {
             seatList.rows.add(id);
         });
 
-        await pool.request()
+        const result = await pool.request()
             .input('user_id', sql.UniqueIdentifier, userId)
             .input('seat_ids', seatList) // Pass the table
-            .input('hold_minutes', sql.Int, 10)
+            .input('hold_seconds', sql.Int, 30)
             .execute('HoldSeats');
+
+        if (result.recordset && result.recordset.length > 0) {
+            return NextResponse.json({
+                error: 'Some seats are no longer available',
+                unavailableSeatIds: result.recordset.map((r: any) => r.id)
+            }, { status: 409 });
+        }
 
         return NextResponse.json({ success: true });
 
     } catch (error: any) {
         console.error('Hold seats error:', error);
-        if (error.number === 50010) {
-            return NextResponse.json({ error: 'One or more seats are not available' }, { status: 409 });
-        }
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

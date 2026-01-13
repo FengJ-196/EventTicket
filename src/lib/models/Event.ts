@@ -20,6 +20,7 @@ export interface EventSeatMapItem {
     y_coordinate: number;
     status: string;
     user_id?: string;
+    hold_expires_at?: Date;
     seat_type_id: string;
     seat_type: string;
     price: number;

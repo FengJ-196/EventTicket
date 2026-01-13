@@ -21,7 +21,8 @@ interface Seat {
     status: string; // 'AVAILABLE', 'RESERVED', 'BOOKED', 'ON_HOLD'
     seat_type: string;
     price: number;
-    user_id?: string; // Add optional user_id
+    user_id?: string;
+    hold_expires_at?: string;
 }
 
 
@@ -33,6 +34,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const [currentUser, setCurrentUser] = useState<any>(null);
+    const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
     // Grid Dimensions
     const [maxX, setMaxX] = useState(0);
@@ -128,23 +130,24 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                 })
             });
             const data = await res.json();
+
             if (res.ok) {
-                alert('Seats held! You have 10 minutes to pay.');
-                // Refresh seats to show status
+                alert('Seats held! You have 30 seconds to pay.');
                 window.location.reload();
-            } else {
-                // Check if it's a session issue (FK violation usually returns 500 but we can infer or if API handles it)
-                // The API returned 500 with the SQL error.
-                if (res.status === 500 && data.error === 'Internal server error') {
-                    // Since we can't easily see the server log details here unless we return them, 
-                    // we'll add a generic fail-safe for dev environments where DB resets happen.
-                    // But better: Let's assume if it fails 500 during dev, it might be the user ID.
-                    // The user sees "Internal server error".
-                    alert('Booking failed. Your session might be invalid. Please login again.');
-                    localStorage.removeItem('user');
-                    router.push('/login');
-                    return;
+            } else if (res.status === 409 && data.unavailableSeatIds) {
+                const contestedSeats = seats.filter(s => data.unavailableSeatIds.includes(s.seat_id));
+                const seatLabels = contestedSeats.map(s => `Row ${getRowLabel(s.x_coordinate)}, Seat ${s.y_coordinate}`).join('\n');
+
+                alert(`Conflict Detected:\n\nThe following seats were just taken by someone else:\n\n${seatLabels}\n\nThey have been removed from your selection.`);
+
+                setSelectedSeats(selectedSeats.filter(id => !data.unavailableSeatIds.includes(id)));
+
+                const seatRes = await fetch(`/api/events/${eventId}/seats`);
+                if (seatRes.ok) {
+                    const freshSeats = await seatRes.json();
+                    setSeats(freshSeats);
                 }
+            } else {
                 alert(data.error || 'Failed to hold seats');
             }
         } catch (err) {
@@ -153,27 +156,48 @@ export default function EventDetails({ params }: { params: { id: string } }) {
         }
     };
 
-    // Calculate total price of selected AVAILABLE seats (pretending we are holding them)
-    // Actually we only show total for checkout. 
-    // For this simple UI, highlighting logic:
-    // Green = Available, Gray = Taken, Blue = Selected.
+    const myHeldSeats = seats.filter(s => s.status === 'ON_HOLD' && currentUser && s.user_id === currentUser.id);
+    const myHeldPrice = myHeldSeats.reduce((sum, s) => sum + s.price, 0);
 
-    // Group seats by row (x) for rendering if we want row-based, 
-    // but Grid is easier with just x/y. 
-    // Assuming x=Row, y=Col.
-
-    const getHashColor = (str: string, type: 'bg' | 'border' | 'text' = 'text') => {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        // Use Golden Angle for much better hue distribution
-        const h = (Math.abs(hash) * 137.5) % 360;
-
-        if (type === 'bg') return `hsl(${h}, 85%, 96%)`;
-        if (type === 'border') return `hsl(${h}, 70%, 80%)`;
-        return `hsl(${h}, 80%, 30%)`;
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
     };
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            if (myHeldSeats.length > 0) {
+                const earliestExpiry = Math.min(...myHeldSeats.map(s => s.hold_expires_at ? new Date(s.hold_expires_at).getTime() : Infinity));
+                if (earliestExpiry === Infinity) {
+                    setTimeLeft(null);
+                    return;
+                }
+                const now = new Date().getTime();
+                const diff = Math.floor((earliestExpiry - now) / 1000);
+                if (diff <= 0) {
+                    clearInterval(timer);
+                    setTimeLeft(0);
+                    alert('Your session has expired. The seats have been released.');
+                    setSelectedSeats([]);
+                    window.location.reload();
+                } else {
+                    setTimeLeft(diff);
+                }
+            } else {
+                setTimeLeft(null);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [myHeldSeats]);
+
+    if (loading) return <div className="p-10 text-center">Loading...</div>;
+    if (!event) return <div className="p-10 text-center">Event not found</div>;
+
+    const totalPrice = seats
+        .filter(s => selectedSeats.includes(s.seat_id))
+        .reduce((sum, s) => sum + s.price, 0);
 
     const getRowLabel = (y: number) => {
         let label = '';
@@ -185,18 +209,6 @@ export default function EventDetails({ params }: { params: { id: string } }) {
         }
         return label;
     };
-
-    if (loading) return <div className="p-10 text-center">Loading...</div>;
-    if (!event) return <div className="p-10 text-center">Event not found</div>;
-
-    // Helper to get total price of selected
-    const totalPrice = seats
-        .filter(s => selectedSeats.includes(s.seat_id))
-        .reduce((sum, s) => sum + s.price, 0);
-
-    // Logic for my held seats
-    const myHeldSeats = seats.filter(s => s.status === 'ON_HOLD' && currentUser && s.user_id === currentUser.id);
-    const myHeldPrice = myHeldSeats.reduce((sum, s) => sum + s.price, 0);
 
     const handleConfirmPurchase = async () => {
         if (!currentUser || myHeldSeats.length === 0) return;
@@ -222,6 +234,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
         }
     };
 
+
     return (
         <div className="min-h-screen bg-white">
             <div className="max-w-7xl mx-auto px-4 py-8">
@@ -240,7 +253,15 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                         {/* Pending Payment Section */}
                         {myHeldSeats.length > 0 && (
                             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 shadow-sm animate-pulse">
-                                <h3 className="text-lg font-bold text-yellow-800 mb-2">Complete Your Order</h3>
+                                <div className="flex justify-between items-start mb-2">
+                                    <h3 className="text-lg font-bold text-yellow-800">Complete Your Order</h3>
+                                    {timeLeft !== null && (
+                                        <div className="bg-yellow-800 text-white px-3 py-1 rounded-full text-sm font-mono flex items-center gap-1">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            {formatTime(timeLeft)}
+                                        </div>
+                                    )}
+                                </div>
                                 <p className="text-sm text-yellow-700 mb-4">You have {myHeldSeats.length} seats reserved. Pay now to secure them.</p>
                                 <div className="space-y-1 mb-4">
                                     {myHeldSeats.map(s => (

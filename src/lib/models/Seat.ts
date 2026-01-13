@@ -80,25 +80,28 @@ export const getSeatsByEventId = async (eventId: string): Promise<Seat[]> => {
 };
 
 // Uses Stored Procedure: HoldSeats
-export const holdSeats = async (userId: string, seatIds: string[], holdMinutes: number = 10): Promise<void> => {
+export const holdSeats = async (userId: string, seatIds: string[], holdSeconds: number = 600): Promise<string[]> => {
     const pool = await getConnection();
 
-    // Helper to create TVP
     const tvp = new sql.Table();
-    // Use 'dbo.GuidList' if that type needs to be specified, but typically simple table structure works if matching the TVP definition
-    // Defining columns to match the EXPECTED structure of GuidList. 
-    // Usually GuidList is defined as TABLE(id UNIQUEIDENTIFIER).
     tvp.columns.add('id', sql.UniqueIdentifier);
 
     for (const id of seatIds) {
         tvp.rows.add(id);
     }
 
-    await pool.request()
+    const result = await pool.request()
         .input('user_id', sql.UniqueIdentifier, userId)
         .input('seat_ids', tvp)
-        .input('hold_minutes', sql.Int, holdMinutes)
+        .input('hold_seconds', sql.Int, holdSeconds)
         .execute('HoldSeats');
+
+    // If the procedure returned a result set, these are the unavailable IDs
+    if (result.recordset && result.recordset.length > 0) {
+        return result.recordset.map((row: any) => row.id);
+    }
+
+    return []; // Empty means success
 };
 
 // Uses Stored Procedure: ReleaseExpiredHolds

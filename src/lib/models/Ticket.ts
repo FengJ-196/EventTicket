@@ -18,6 +18,7 @@ export interface PurchasedTicket {
     seat_type: string;
     price: number;
     seat_status: string;
+    status: string;
     payment_date: Date;
 }
 
@@ -27,7 +28,6 @@ export const viewPurchasedTickets = async (userId: string): Promise<PurchasedTic
     const result = await pool.request()
         .input('user_id', sql.UniqueIdentifier, userId)
         .query('SELECT * FROM ViewPurchasedTickets(@user_id)');
-    return result.recordset as PurchasedTicket[];
     return result.recordset as PurchasedTicket[];
 };
 
