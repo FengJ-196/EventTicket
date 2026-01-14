@@ -6,6 +6,9 @@ GO
 USE EventTicketing;
 GO
 
+-- =========================================
+-- Clean up Tables, Procedures and Functions
+-- =========================================
 DROP TABLE IF EXISTS SeatTransaction;
 DROP TABLE IF EXISTS Ticket;
 DROP TABLE IF EXISTS Payment;
@@ -15,7 +18,6 @@ DROP TABLE IF EXISTS Event;
 DROP TABLE IF EXISTS [User];
 GO
 
-<<<<<<< HEAD
 DROP PROCEDURE IF EXISTS CreateEvent;
 DROP PROCEDURE IF EXISTS UpdateEvent;
 DROP PROCEDURE IF EXISTS DeleteEvent;
@@ -32,18 +34,6 @@ DROP PROCEDURE IF EXISTS LoginUser;
 DROP PROCEDURE IF EXISTS CreateSeat;
 DROP PROCEDURE IF EXISTS UpdateSeat;
 DROP PROCEDURE IF EXISTS DeleteSeat;
-=======
-
-
--- Clean up Procedures and Functions
-DROP PROCEDURE IF EXISTS CreateEvent;
-DROP FUNCTION IF EXISTS GetSeatTransactions;
-DROP PROCEDURE IF EXISTS CreateSeatType;
-DROP PROCEDURE IF EXISTS UpdateSeatType;
-DROP PROCEDURE IF EXISTS AssignSeatTypeByRectangle;
->>>>>>> 81104ae306c87af5be1a5e2721fe90bd754be3b7
-DROP PROCEDURE IF EXISTS DisableSeats;
-DROP PROCEDURE IF EXISTS EnableSeats;
 DROP PROCEDURE IF EXISTS GetAllSeats;
 DROP PROCEDURE IF EXISTS GetSeatById;
 DROP PROCEDURE IF EXISTS GetSeatsByEventId;
@@ -66,6 +56,9 @@ DROP FUNCTION IF EXISTS GetSeatTransactions;
 
 DROP PROCEDURE IF EXISTS GetAllPayments;
 DROP PROCEDURE IF EXISTS GetPaymentById;
+
+DROP TYPE IF EXISTS dbo.GuidList;
+GO
 
 -- =========================
 -- Tables
@@ -114,7 +107,7 @@ CREATE TABLE Seat (
     CONSTRAINT FK_Seat_Event FOREIGN KEY (event_id) REFERENCES Event(id),
     CONSTRAINT FK_Seat_SeatType FOREIGN KEY (seat_type_id) REFERENCES SeatType(id),
     CONSTRAINT FK_Seat_User FOREIGN KEY (user_id) REFERENCES [User](id),
-    CONSTRAINT CK_Seat_Status CHECK (status IN ('AVAILABLE', 'BOOKED', 'ON_HOLD', 'DISABLED')),
+    CONSTRAINT CK_Seat_Status CHECK (status IN ('AVAILABLE', 'BOOKED', 'ON_HOLD')),
     CONSTRAINT UQ_Seat_UniquePosition UNIQUE (event_id, x_coordinate, y_coordinate)
 );
 
@@ -152,12 +145,17 @@ CREATE TABLE SeatTransaction (
 );
 GO
 
-
-
+-- =========================
+-- Types
+-- =========================
 CREATE TYPE dbo.GuidList AS TABLE (
     id UNIQUEIDENTIFIER NOT NULL
 );
 GO
+
+-- =========================
+-- Triggers
+-- =========================
 
 CREATE TRIGGER TR_Seat_MaintainAvailableSeats
     ON Seat
@@ -179,118 +177,6 @@ BEGIN
 END;
 GO
 
-<<<<<<< HEAD
-=======
--- =========================
--- Payment
--- =========================
-CREATE TABLE Payment (
-                         id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-                         amount DECIMAL(10,2) NOT NULL,
-                         payment_date DATETIME NOT NULL,
-                         user_id UNIQUEIDENTIFIER NOT NULL,
-                         method NVARCHAR(50) NOT NULL,
-
-                         FOREIGN KEY (user_id) REFERENCES [User](id),
-                         CONSTRAINT CK_Payment_Method
-                             CHECK (method in ('CREDIT_CARD', 'CASH', 'BANK_TRANSFER', 'E_WALLET'))
-);
-
--- =========================
--- Ticket
--- =========================
-CREATE TABLE Ticket (
-                        id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-                        seat_id UNIQUEIDENTIFIER NOT NULL,
-                        payment_id UNIQUEIDENTIFIER NOT NULL,
-                        price DECIMAL(10,2) NOT NULL,
-                        status NVARCHAR(20) DEFAULT 'VALID',
-
-                        CONSTRAINT FK_Ticket_Seat
-                            FOREIGN KEY (seat_id) REFERENCES Seat(id),
-
-                        CONSTRAINT FK_Ticket_Payment
-                            FOREIGN KEY (payment_id) REFERENCES Payment(id),
-
-                        CONSTRAINT CK_Ticket_Status CHECK (status IN ('VALID', 'REFUNDED'))
-);
-
--- =========================
--- Seat Transaction
--- =========================
-CREATE TABLE SeatTransaction (
-                        id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-                        seat_id UNIQUEIDENTIFIER NOT NULL,
-                        user_id UNIQUEIDENTIFIER NOT NULL,
-                        action NVARCHAR(20) NOT NULL,
-                        ticket_id UNIQUEIDENTIFIER NULL,
-                        created_at DATETIME DEFAULT GETUTCDATE(),
-
-                        CONSTRAINT FK_SeatTransaction_Seat
-                            FOREIGN KEY (seat_id) REFERENCES Seat(id),
-
-                        CONSTRAINT FK_SeatTransaction_User
-                            FOREIGN KEY (user_id) REFERENCES [User](id),
-
-                        CONSTRAINT FK_SeatTransaction_Ticket
-                            FOREIGN KEY (ticket_id) REFERENCES Ticket(id)
-);
-
-IF NOT EXISTS (SELECT * FROM sys.types WHERE is_user_defined = 1 AND name = 'GuidList')
-    BEGIN
-        CREATE TYPE dbo.GuidList AS TABLE
-        (
-            id UNIQUEIDENTIFIER NOT NULL
-        );
-    END
-GO
---- End of Schema
---- =========================================
-
-
---- =========================================
---- Organizer
-
-CREATE PROCEDURE CreateEvent
-    @name NVARCHAR(200),
-    @address NVARCHAR(255),
-    @event_date DATETIME,
-    @rows INT,
-    @columns INT,
-    @organizer_id UNIQUEIDENTIFIER
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    INSERT INTO Event (
-        id,
-        name,
-        status,
-        address,
-        event_date,
-        rows,
-        columns,
-        available_seats,
-        organizer_id
-    )
-    VALUES (
-               NEWID(),
-               @name,
-               'DRAFT',
-               @address,
-               @event_date,
-               @rows,
-               @columns,
-               0,
-               @organizer_id
-           );
-END;
-GO
-
--- Create a trigger when the event got updated to be status 'verify' , generate a normal seat type for the event with
--- the price = 0, and generate all seat for the event with the seat type being normal
-
->>>>>>> 81104ae306c87af5be1a5e2721fe90bd754be3b7
 CREATE TRIGGER TR_Event_Verify_GenerateSeats
     ON Event
     AFTER UPDATE
@@ -326,448 +212,9 @@ BEGIN
 END;
 GO
 
-<<<<<<< HEAD
 -- =========================
 -- User Procedures
 -- =========================
-=======
-CREATE PROCEDURE UpdateSeatType
-    @seat_type_id UNIQUEIDENTIFIER,
-    @event_id UNIQUEIDENTIFIER,
-    @name NVARCHAR(100) = NULL,
-    @price DECIMAL(10,2) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF NOT EXISTS (
-        SELECT 1
-        FROM SeatType
-        WHERE id = @seat_type_id
-          AND event_id = @event_id
-    )
-        BEGIN
-            THROW 50001, 'SeatType does not belong to the specified Event.', 1;
-            RETURN;
-        END
-
-    UPDATE SeatType
-    SET
-        name  = COALESCE(@name, name),
-        price = COALESCE(@price, price)
-    WHERE id = @seat_type_id;
-END;
-GO
-
-CREATE PROCEDURE CreateSeatType
-    @event_id UNIQUEIDENTIFIER,
-    @name NVARCHAR(100),
-    @price DECIMAL(10,2)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM Event WHERE id = @event_id
-    )
-        BEGIN
-            THROW 50002, 'Event does not exist.', 1;
-            RETURN;
-        END
-
-    DECLARE @seat_type_id UNIQUEIDENTIFIER = NEWID();
-
-    INSERT INTO SeatType (id, name, price, event_id)
-    VALUES (@seat_type_id, @name, @price, @event_id);
-
--- Return created id
-    SELECT @seat_type_id AS seat_type_id;
-END;
-GO
-
-CREATE PROCEDURE AssignSeatTypeByRectangle
-    @event_id UNIQUEIDENTIFIER,
-    @seat_type_name NVARCHAR(100),
-    @x1 INT,
-    @y1 INT,
-    @x2 INT,
-    @y2 INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF @x1 > @x2 OR @y1 > @y2
-        THROW 50010, 'Invalid rectangle coordinates.', 1;
-
-    DECLARE @seat_type_id UNIQUEIDENTIFIER;
-
-    IF NOT EXISTS (SELECT 1 FROM Event WHERE id = @event_id)
-        THROW 50011, 'Event does not exist.', 1;
-
-    SELECT @seat_type_id = id
-    FROM SeatType
-    WHERE event_id = @event_id
-      AND name = @seat_type_name;
-
-    IF @seat_type_id IS NULL
-        THROW 50012, 'Seat type does not exist.', 1;
-
-    UPDATE Seat
-    SET seat_type_id = @seat_type_id
-    WHERE event_id = @event_id
-      AND status IN ('AVAILABLE', 'DISABLED') -- Only update available or disabled seats
-      AND x_coordinate BETWEEN @x1 AND @x2
-      AND y_coordinate BETWEEN @y1 AND @y2;
-
-END;
-GO
-
-CREATE PROCEDURE DisableSeats
-    @event_id UNIQUEIDENTIFIER,
-    @seat_ids dbo.GuidList READONLY
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    UPDATE Seat
-    SET status = 'DISABLED'
-    FROM Seat s
-             JOIN @seat_ids i ON s.id = i.id
-    WHERE s.event_id = @event_id
-      AND s.status = 'AVAILABLE'; -- Only disable available seats
-END;
-GO
-
-CREATE PROCEDURE EnableSeats
-    @event_id UNIQUEIDENTIFIER,
-    @seat_ids dbo.GuidList READONLY
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    -- Enable seats
-    UPDATE Seat
-    SET status = 'AVAILABLE'
-    FROM Seat s
-             JOIN @seat_ids i ON s.id = i.id
-    WHERE s.event_id = @event_id
-      AND s.status = 'DISABLED';
-END;
-GO
-GO
-
--- Potential view analytical data from the event
-
-
---- User
-
-CREATE FUNCTION GetUpcomingEvents()
-    RETURNS TABLE
-        AS
-        RETURN
-        (
-        SELECT
-            id,
-            name,
-            address,
-            event_date,
-            (rows * columns) AS capacity,
-            available_seats
-        FROM Event
-        WHERE status = 'PUBLISHED'
-          AND event_date >= GETDATE()
-        );
-GO
-
-CREATE FUNCTION GetEventSeatMap
-(
-    @EventId UNIQUEIDENTIFIER
-)
-    RETURNS TABLE
-        AS
-        RETURN
-        (
-        SELECT
-            s.id,
-            s.id AS seat_id,
-            s.x_coordinate,
-            s.y_coordinate,
-            s.status,
-            s.user_id,
-            s.hold_expires_at,
-            s.seat_type_id,
-            st.name AS seat_type,
-            st.price
-        FROM Seat s
-                 JOIN SeatType st ON s.seat_type_id = st.id
-        WHERE s.event_id = @EventId
-        );
-GO
-
-
-CREATE PROCEDURE HoldSeats
-    @user_id UNIQUEIDENTIFIER,
-    @seat_ids dbo.GuidList READONLY,
-    @hold_seconds INT = 600
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @expire_at DATETIME = DATEADD(SECOND, @hold_seconds, GETUTCDATE());
-
-    BEGIN TRY
-        BEGIN TRANSACTION;
-
-        -- Identify unavailable seats
-        DECLARE @UnavailableSeats TABLE (id UNIQUEIDENTIFIER);
-        INSERT INTO @UnavailableSeats (id)
-        SELECT s.id
-        FROM Seat s WITH (UPDLOCK, HOLDLOCK)
-        JOIN @seat_ids i ON s.id = i.id
-        WHERE s.status <> 'AVAILABLE';
-
-        IF EXISTS (SELECT 1 FROM @UnavailableSeats)
-        BEGIN
-            -- Return the list of unavailable seats
-            SELECT id FROM @UnavailableSeats;
-            COMMIT TRANSACTION; -- We didn't change anything, so just commit/rollback is fine.
-            RETURN;
-        END
-
-        DECLARE @HeldSeatsInfo TABLE (
-                                         event_id UNIQUEIDENTIFIER,
-                                         seat_id UNIQUEIDENTIFIER
-                                     );
-
-        UPDATE s
-        SET
-            status = 'ON_HOLD',
-            user_id = @user_id,
-            hold_expires_at = @expire_at
-        OUTPUT inserted.event_id, inserted.id INTO @HeldSeatsInfo
-        FROM Seat s
-                 JOIN @seat_ids i ON s.id = i.id;
-
-
-
-        INSERT INTO SeatTransaction (id, seat_id, user_id, action, created_at)
-        SELECT NEWID(), seat_id, @user_id, 'ON_HOLD', GETUTCDATE()
-        FROM @HeldSeatsInfo;
-
-        COMMIT TRANSACTION;
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK;
-        THROW;
-    END CATCH
-END;
-GO
-
-CREATE PROCEDURE ConfirmPurchase
-    @user_id UNIQUEIDENTIFIER,
-    @seat_ids dbo.GuidList READONLY,
-    @payment_method NVARCHAR(50),
-    @amount DECIMAL(10,2)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        BEGIN TRANSACTION;
-
-        -- Validate holds
-        IF EXISTS (
-            SELECT 1
-            FROM Seat s WITH (UPDLOCK, HOLDLOCK)
-                     JOIN @seat_ids i ON s.id = i.id
-            WHERE s.status <> 'ON_HOLD'
-               OR s.user_id <> @user_id
-               OR s.hold_expires_at < GETUTCDATE()
-        )
-            BEGIN
-                THROW 50011, 'Seat hold expired or invalid.', 1;
-            END
-
-        -- Create payment
-        DECLARE @payment_id UNIQUEIDENTIFIER = NEWID();
-
-        INSERT INTO Payment (id, amount, payment_date, method, user_id)
-        VALUES (@payment_id, @amount, GETUTCDATE(), @payment_method, @user_id);
-
--- Book seats
-        UPDATE s
-        SET
-            status = 'BOOKED',
-            hold_expires_at = NULL
-        FROM Seat s
-                 JOIN @seat_ids i ON s.id = i.id;
-
-        DECLARE @CreatedTickets table (
-                                          ticket_id UNIQUEIDENTIFIER,
-                                          seat_id UNIQUEIDENTIFIER
-                                      );
-
-        INSERT INTO Ticket (id, seat_id, payment_id, price, status)
-        OUTPUT inserted.id, inserted.seat_id INTO @CreatedTickets
-        SELECT NEWID(), s.id, @payment_id, st.price, 'VALID'
-        FROM @seat_ids i
-                 JOIN Seat s ON i.id = s.id
-                 JOIN SeatType st ON s.seat_type_id = st.id;
-
-        INSERT INTO SeatTransaction (id, seat_id, user_id, action, ticket_id, created_at)
-        SELECT
-            NEWID(),
-            t.seat_id,
-            @user_id,
-            'BOOK',
-            t.ticket_id,
-            GETUTCDATE()
-        FROM @CreatedTickets t;
-
-        COMMIT TRANSACTION;
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK;
-        THROW;
-    END CATCH
-END;
-GO
-
-CREATE PROCEDURE ReleaseExpiredHolds
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @ExpiredSeats table (
-                                    seat_id UNIQUEIDENTIFIER,
-                                    user_id UNIQUEIDENTIFIER,
-                                    event_id UNIQUEIDENTIFIER
-                                );
-
-    UPDATE Seat
-    SET
-        status = 'AVAILABLE',
-        user_id = NULL,
-        hold_expires_at = NULL
-    OUTPUT deleted.id, deleted.user_id, deleted.event_id INTO @ExpiredSeats
-    WHERE status = 'ON_HOLD'
-      AND hold_expires_at < GETUTCDATE();
-
-    INSERT INTO SeatTransaction (id, seat_id, user_id, action, created_at)
-    SELECT NEWID(), seat_id, user_id, 'EXPIRE', GETUTCDATE()
-    FROM @ExpiredSeats;
-END;
-GO
-
-CREATE FUNCTION ViewPurchasedTickets
-(
-    @user_id UNIQUEIDENTIFIER
-)
-    RETURNS TABLE
-        AS
-        RETURN
-        (
-        SELECT
-            t.id            AS ticket_id,
-            t.payment_id    AS payment_id,
-            e.name          AS event_name,
-            e.event_date,
-            s.id            AS seat_id,
-            s.x_coordinate,
-            s.y_coordinate,
-            st.name         AS seat_type,
-            t.price,
-            s.status        AS seat_status,
-            t.status        AS status,
-            p.payment_date
-        FROM Ticket t
-        JOIN Payment p ON t.payment_id = p.id
-        JOIN Seat s ON t.seat_id = s.id
-        JOIN Event e ON s.event_id = e.id
-        JOIN SeatType st ON s.seat_type_id = st.id
-        WHERE p.user_id = @user_id
-        );
-GO
-
-CREATE PROCEDURE CancelTicket
-    @ticket_id UNIQUEIDENTIFIER,
-    @user_id UNIQUEIDENTIFIER
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        BEGIN TRANSACTION;
-
-        DECLARE @seat_id UNIQUEIDENTIFIER;
-        DECLARE @event_id UNIQUEIDENTIFIER;
-
-        -- Validate ticket ownership and status
-        SELECT @seat_id = t.seat_id, @event_id = s.event_id
-        FROM Ticket t
-                 JOIN Seat s ON t.seat_id = s.id
-        WHERE t.id = @ticket_id
-          AND t.status = 'VALID'
-          AND s.user_id = @user_id
-          AND s.status = 'BOOKED';
-
-        IF @seat_id IS NULL
-            THROW 50014, 'Ticket not found or invalid.', 1;
-
-        UPDATE Ticket
-        SET status = 'REFUNDED'
-        WHERE id = @ticket_id AND status = 'VALID';
-
-        IF @@ROWCOUNT = 0 THROW 50015, 'Ticket already refunded or invalid.', 1;
-
-        UPDATE Seat
-        SET status = 'AVAILABLE',
-            user_id = NULL,
-            hold_expires_at = NULL
-        WHERE id = @seat_id AND status = 'BOOKED';
-
-
-
-        INSERT INTO SeatTransaction (id, seat_id, user_id, action, ticket_id, created_at)
-        VALUES (NEWID(), @seat_id, @user_id, 'CANCEL', @ticket_id, GETUTCDATE());
-
-        COMMIT TRANSACTION;
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK;
-        THROW;
-    END CATCH
-END;
-GO
-
-CREATE FUNCTION GetSeatTransactions()
-    RETURNS TABLE
-        AS
-        RETURN
-        (
-        SELECT
-            st.id,
-            st.action,
-            st.created_at,
-            u.name AS user_name,
-            u.userName AS user_username,
-            e.name AS event_name,
-            s.x_coordinate,
-            s.y_coordinate,
-            st.ticket_id
-        FROM SeatTransaction st
-                 JOIN [User] u ON st.user_id = u.id
-                 JOIN Seat s ON st.seat_id = s.id
-                 JOIN Event e ON s.event_id = e.id
-        );
-GO
-
---- Potential admin will verify the events.
-
--- =============================================
--- New Procedures for UI Integration
--- =============================================
->>>>>>> 81104ae306c87af5be1a5e2721fe90bd754be3b7
 
 CREATE PROCEDURE RegisterUser
     @name NVARCHAR(100), @userName NVARCHAR(100), @password NVARCHAR(100)
@@ -882,12 +329,6 @@ CREATE PROCEDURE GetAllSeats AS BEGIN SET NOCOUNT ON; SELECT * FROM Seat; END; G
 CREATE PROCEDURE GetSeatById @id UNIQUEIDENTIFIER AS BEGIN SET NOCOUNT ON; SELECT * FROM Seat WHERE id = @id; END; GO
 CREATE PROCEDURE GetSeatsByEventId @event_id UNIQUEIDENTIFIER AS BEGIN SET NOCOUNT ON; SELECT * FROM Seat WHERE event_id = @event_id; END; GO
 
-CREATE PROCEDURE DisableSeats @event_id UNIQUEIDENTIFIER, @seat_ids dbo.GuidList READONLY
-AS BEGIN SET NOCOUNT ON; UPDATE Seat SET status = 'DISABLED' FROM Seat s JOIN @seat_ids i ON s.id = i.id WHERE s.event_id = @event_id AND s.status = 'AVAILABLE'; END; GO
-
-CREATE PROCEDURE EnableSeats @event_id UNIQUEIDENTIFIER, @seat_ids dbo.GuidList READONLY
-AS BEGIN SET NOCOUNT ON; UPDATE Seat SET status = 'AVAILABLE' FROM Seat s JOIN @seat_ids i ON s.id = i.id WHERE s.event_id = @event_id AND s.status = 'DISABLED'; END; GO
-
 -- =========================
 -- SeatType Procedures
 -- =========================
@@ -915,9 +356,9 @@ CREATE PROCEDURE GetSeatTypesByEventId @event_id UNIQUEIDENTIFIER AS BEGIN SET N
 CREATE PROCEDURE AssignSeatTypeByRectangle @event_id UNIQUEIDENTIFIER, @seat_type_name NVARCHAR(100), @x1 INT, @y1 INT, @x2 INT, @y2 INT
 AS BEGIN SET NOCOUNT ON;
     DECLARE @sid UNIQUEIDENTIFIER = (SELECT id FROM SeatType WHERE event_id = @event_id AND name = @seat_type_name);
-    IF @sid IS NULL THROW 50012, 'Seat type not found', 1;
+    IF @sid IS NULL THROW 5012, 'Seat type not found', 1;
     UPDATE Seat SET seat_type_id = @sid
-                WHERE event_id = @event_id AND status IN ('AVAILABLE', 'DISABLED') AND x_coordinate BETWEEN @x1 AND @x2 AND y_coordinate BETWEEN @y1 AND @y2;
+                WHERE event_id = @event_id AND status = 'AVAILABLE' AND x_coordinate BETWEEN @x1 AND @x2 AND y_coordinate BETWEEN @y1 AND @y2;
 END;
 GO
 
@@ -1094,192 +535,9 @@ BEGIN TRY
     EXEC HoldSeats @user_id = @Cust1ID, @seat_ids = @SList1;
     EXEC ConfirmPurchase @user_id = @Cust1ID, @seat_ids = @SList1, @payment_method = 'CREDIT_CARD', @amount = 170.00;
 
-<<<<<<< HEAD
     INSERT INTO @SList2 (id) SELECT TOP 1 id FROM Seat WHERE event_id = @Event3ID AND status = 'AVAILABLE';
     EXEC HoldSeats @user_id = @Cust2ID, @seat_ids = @SList2;
     EXEC ConfirmPurchase @user_id = @Cust2ID, @seat_ids = @SList2, @payment_method = 'E_WALLET', @amount = 45.00;
-=======
-    IF @SeatCount <> 9
-        THROW 50000, 'Seat generation mismatch', 1;
-
-    PRINT '> Seats Generated: ' + CAST(@SeatCount AS NVARCHAR(10)) + ' (Expected: 9)';
-
-    -- 4.5 Set price for Default Seats
-    PRINT '> Setting price for Default Seat Type...';
-    DECLARE @DefaultSeatTypeId UNIQUEIDENTIFIER;
-    SELECT @DefaultSeatTypeId = id FROM SeatType WHERE event_id = @EventID AND name = 'DEFAULT SEAT';
-    EXEC UpdateSeatType @seat_type_id = @DefaultSeatTypeId, @event_id = @EventID, @price = 50.00;
-
-    -- 5. Create VIP Seat Type
-    PRINT '> Creating VIP Seat Type...';
-    EXEC CreateSeatType @event_id = @EventID, @name = 'VIP', @price = 150.00;
-    SELECT @VIPSeatTypeId = id FROM SeatType WHERE event_id = @EventID AND name = 'VIP';
-
-    -- 6. Assign VIP Seats (Row 1)
-    PRINT '> Assigning Row 1 to VIP...';
-    EXEC AssignSeatTypeByRectangle
-         @event_id = @EventID,
-         @seat_type_name = 'VIP',
-         @x1 = 1, @y1 = 1,
-         @x2 = 3, @y2 = 1; -- Row 1 (y=1), Cols 1-3 (x=1,2,3)
-
-    -- 7. Publish Event
-    PRINT '> Publishing Event...';
-    UPDATE Event SET status = 'PUBLISHED' WHERE id = @EventID;
-
-    -- 8. Test GetUpcomingEvents
-    PRINT '--- [Func] GetUpcomingEvents ---';
-    SELECT name, event_date, available_seats FROM GetUpcomingEvents();
-
-    -- 9. Test GetEventSeatMap
-    PRINT '--- [Func] GetEventSeatMap (Top 5 lines) ---';
-    SELECT TOP 5 x_coordinate, y_coordinate, seat_type, price, status
-    FROM GetEventSeatMap(@EventID)
-    ORDER BY x_coordinate, y_coordinate;
-
-    -- 10. Hold Seats (Row 2, Col 1 and 2)
-    DELETE FROM @SeatList;
-    INSERT INTO @SeatList (id)
-    SELECT id FROM Seat
-    WHERE event_id = @EventID AND x_coordinate = 2 AND y_coordinate IN (1, 2);
-
-    PRINT '> Holding 2 Seats (Row 2, Col 1 & 2)...';
-    EXEC HoldSeats @user_id = @CustomerID, @seat_ids = @SeatList, @hold_seconds = 60;
-
-    -- Verify Hold
-    SELECT x_coordinate, y_coordinate, status, hold_expires_at
-    FROM Seat
-    WHERE event_id = @EventID AND status = 'ON_HOLD';
-
-    -- 11. Confirm Purchase
-    PRINT '> Confirming Purchase for Held Seats...';
-    EXEC ConfirmPurchase
-         @user_id = @CustomerID,
-         @seat_ids = @SeatList,
-         @payment_method = 'CREDIT_CARD',
-         @amount = 100.00; -- Changed from 200.00 (2 seats * 50.00 default price)
-
-    -- Verify Booked
-    SELECT x_coordinate, y_coordinate, status
-    FROM Seat
-    WHERE event_id = @EventID AND status = 'BOOKED';
-
-    -- 12. View Purchased Tickets
-    PRINT '--- [Func] ViewPurchasedTickets ---';
-    SELECT event_name, seat_id, price, payment_date FROM ViewPurchasedTickets(@CustomerID);
-
-    -- 13. Test Cancel Ticket (Refund)
-    PRINT '> Testing Ticket Cancellation...';
-
-    -- Pick a ticket to cancel (e.g., from the seats we just booked)
-    DECLARE @TicketToCancel UNIQUEIDENTIFIER;
-
-    SELECT TOP 1 @TicketToCancel = t.id
-    FROM Ticket t
-             JOIN Seat s ON t.seat_id = s.id
-    WHERE s.user_id = @CustomerID AND t.status = 'VALID';
-
-    IF @TicketToCancel IS NULL
-        THROW 50000, 'No valid ticket found to cancel', 1;
-
-    EXEC CancelTicket @ticket_id = @TicketToCancel, @user_id = @CustomerID;
-
-    -- Verify Ticket Refunded
-    IF NOT EXISTS (SELECT 1 FROM Ticket WHERE id = @TicketToCancel AND status = 'REFUNDED')
-        THROW 50000, 'Ticket status not updated to REFUNDED', 1;
-
-    PRINT '> Ticket Refunded Successfully.';
-
-    -- 14. Test Expiry
-    PRINT '> Testing Expiry Logic...';
-
-    -- Hold another seat (Row 3, Col 1)
-    DELETE FROM @ExpireSeatList;
-    INSERT INTO @ExpireSeatList (id)
-    SELECT id FROM Seat
-    WHERE event_id = @EventID AND x_coordinate = 3 AND y_coordinate = 1;
-
-    PRINT '> Holding Seat (3,1)...';
-    EXEC HoldSeats @user_id = @CustomerID, @seat_ids = @ExpireSeatList, @hold_seconds = 600;
-
-    -- Manually expire it
-    PRINT '> Manually simulating expiration...';
-    UPDATE Seat SET hold_expires_at = DATEADD(SECOND, -60, GETUTCDATE())
-    WHERE id IN (SELECT id FROM @ExpireSeatList);
-
-    PRINT '> Running ReleaseExpiredHolds...';
-    EXEC ReleaseExpiredHolds;
-
-    -- Verify it is available again
-    SELECT x_coordinate, y_coordinate, status
-    FROM Seat
-    WHERE id IN (SELECT id FROM @ExpireSeatList);
-
-    PRINT '=== TEST COMPLETE ===';
-
-    -- 15. Test New Procedures
-    PRINT '=== TESTING NEW UI PROCEDURES ===';
-
-    -- Register
-    PRINT '> Testing RegisterUser...';
-    DECLARE @NewUserTbl TABLE (id UNIQUEIDENTIFIER, name NVARCHAR(100));
-    INSERT INTO @NewUserTbl EXEC RegisterUser 'Test User', 'testuser_new', 'password';
-
-    DECLARE @NewUserID UNIQUEIDENTIFIER;
-    SELECT @NewUserID = id FROM @NewUserTbl;
-
-    IF @NewUserID IS NULL THROW 50000, 'RegisterUser failed', 1;
-    PRINT '> Registered ID: ' + CAST(@NewUserID AS NVARCHAR(50));
-
-    -- Login
-    PRINT '> Testing LoginUser...';
-    EXEC LoginUser 'testuser_new', 'password';
-
-    -- Search
-    PRINT '> Testing SearchEvents...';
-    EXEC SearchEvents @keyword = 'Summer', @fromDate = '2026-01-01';
-
-    -- Details
-    PRINT '> Testing GetEventDetails...';
-    EXEC GetEventDetails @EventID;
-
-    -- 16. Test Disable/Enable Seats (New Feature)
-    PRINT '=== TESTING DISABLE/ENABLE SEATS ===';
-
-    DECLARE @DisableSeatList dbo.GuidList;
-    DELETE FROM @DisableSeatList;
-
-    -- Pick a seat to disable (e.g. Row 3, Col 3)
-    INSERT INTO @DisableSeatList (id)
-    SELECT id FROM Seat WHERE event_id = @EventID AND x_coordinate = 3 AND y_coordinate = 3;
-
-    PRINT '> Disabling Seat (3,3)...';
-    EXEC DisableSeats @event_id = @EventID, @seat_ids = @DisableSeatList;
-
-    -- Verify Disabled
-    IF NOT EXISTS (SELECT 1 FROM Seat WHERE event_id = @EventID AND x_coordinate = 3 AND y_coordinate = 3 AND status = 'DISABLED')
-        THROW 50000, 'Seat failed to disable', 1;
-
-    -- Attempt to Hold Disabled Seat (Should Fail)
-    BEGIN TRY
-        PRINT '> Attempting to Hold Disabled Seat (Expected Failure)...';
-        EXEC HoldSeats @user_id = @CustomerID, @seat_ids = @DisableSeatList, @hold_seconds = 60;
-        THROW 50000, 'Failed to block hold on disabled seat', 1;
-    END TRY
-    BEGIN CATCH
-        PRINT '> Correctly blocked holding disabled seat: ' + ERROR_MESSAGE();
-    END CATCH
-
-    -- Re-Enable Seat
-    PRINT '> Re-Enabling Seat (3,3)...';
-    EXEC EnableSeats @event_id = @EventID, @seat_ids = @DisableSeatList;
-
-    -- Verify Available
-    IF NOT EXISTS (SELECT 1 FROM Seat WHERE event_id = @EventID AND x_coordinate = 3 AND y_coordinate = 3 AND status = 'AVAILABLE')
-        THROW 50000, 'Seat failed to enable', 1;
-
-    PRINT '=== ALL TESTS PASSED ===';
->>>>>>> 81104ae306c87af5be1a5e2721fe90bd754be3b7
 
     PRINT 'Sample data populated successfully.';
 END TRY

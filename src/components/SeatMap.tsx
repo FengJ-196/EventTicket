@@ -16,7 +16,7 @@ interface Seat {
     x_coordinate: number;
     y_coordinate: number;
     seat_type_id: string;
-    status: string; // AVAILABLE, ON_HOLD, BOOKED, DISABLED
+    status: string; // AVAILABLE, ON_HOLD, BOOKED
 }
 
 interface Event {
@@ -119,7 +119,6 @@ export default function SeatMap({ event }: { event: Event }) {
                         const type = getSeatType(seat.seat_type_id);
                         const isSelected = selectedSeatIds.has(seat.id);
                         const isAvailable = seat.status === 'AVAILABLE';
-                        const isDisabled = seat.status === 'DISABLED';
                         const isInteractable = isAvailable;
 
                         return (
@@ -134,9 +133,7 @@ export default function SeatMap({ event }: { event: Event }) {
                                             ? "bg-indigo-600 text-white shadow-lg shadow-indigo-300 scale-105"
                                             : "bg-white border-2 border-slate-200 hover:border-indigo-400 text-slate-600 hover:bg-indigo-50"
                                     ) : (
-                                        isDisabled
-                                            ? "bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-700 opacity-50" // Disabled Style
-                                            : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200" // Booked Style
+                                        "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200" // Booked/Reserved Style
                                     )
                                 )}
                                 title={`Row ${y}, Col ${x} - ${type?.name} ($${type?.price})`}
