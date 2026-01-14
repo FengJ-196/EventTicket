@@ -57,21 +57,45 @@ export const getSeatsByEventId = async (eventId: string): Promise<Seat[]> => {
     return result.recordset as Seat[];
 };
 
+<<<<<<< HEAD
 export const holdSeats = async (userId: string, seatIds: string[], holdSeconds: number = 600): Promise<string[]> => {
     const pool = await getConnection();
+=======
+// Uses Stored Procedure: HoldSeats
+export const holdSeats = async (userId: string, seatIds: string[], holdSeconds: number = 600): Promise<string[]> => {
+    const pool = await getConnection();
+
+>>>>>>> 81104ae306c87af5be1a5e2721fe90bd754be3b7
     const tvp = new sql.Table();
     tvp.columns.add('id', sql.UniqueIdentifier);
     for (const id of seatIds) tvp.rows.add(id);
+
+<<<<<<< HEAD
+=======
+    for (const id of seatIds) {
+        tvp.rows.add(id);
+    }
+
+>>>>>>> 81104ae306c87af5be1a5e2721fe90bd754be3b7
     const result = await pool.request()
         .input('user_id', sql.UniqueIdentifier, userId)
         .input('seat_ids', tvp)
         .input('hold_seconds', sql.Int, holdSeconds)
         .execute('HoldSeats');
 
+<<<<<<< HEAD
     if (result.recordset && result.recordset.length > 0) {
         return result.recordset.map((row: any) => row.id);
     }
     return [];
+=======
+    // If the procedure returned a result set, these are the unavailable IDs
+    if (result.recordset && result.recordset.length > 0) {
+        return result.recordset.map((row: any) => row.id);
+    }
+
+    return []; // Empty means success
+>>>>>>> 81104ae306c87af5be1a5e2721fe90bd754be3b7
 };
 
 export const releaseExpiredHolds = async (): Promise<void> => {
