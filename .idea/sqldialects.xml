@@ -3,5 +3,9 @@
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/src/DatabaseQuery.sql" dialect="TSQL" />
     <file url="file://$PROJECT_DIR$/src/DropAll.sql" dialect="GenericSQL" />
+<<<<<<< HEAD
+=======
+    <file url="file://$PROJECT_DIR$/src/SampleDataAndTests.sql" dialect="TSQL" />
+>>>>>>> 81104ae306c87af5be1a5e2721fe90bd754be3b7
   </component>
 </project>
