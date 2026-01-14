@@ -56,9 +56,6 @@ DROP FUNCTION IF EXISTS GetSeatTransactions;
 DROP PROCEDURE IF EXISTS GetAllPayments;
 DROP PROCEDURE IF EXISTS GetPaymentById;
 
-DROP TYPE IF EXISTS dbo.GuidList;
-GO
-
 -- =========================
 -- Tables
 -- =========================
