@@ -136,7 +136,7 @@ export default function SeatMap({ event }: { event: Event }) {
                                     ) : (
                                         isDisabled
                                             ? "bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-700 opacity-50" // Disabled Style
-                                            : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200" // Booked/Reserved Style
+                                            : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200" // Booked Style
                                     )
                                 )}
                                 title={`Row ${y}, Col ${x} - ${type?.name} ($${type?.price})`}
