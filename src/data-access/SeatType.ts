@@ -1,55 +1,48 @@
-import { getConnection, sql } from '../db';
+import prisma from '../lib/prisma';
+import { SeatType } from '@prisma/client';
 
 export const getAllSeatTypes = async (): Promise<SeatType[]> => {
-    const pool = await getConnection();
-    const result = await pool.request().execute('GetAllSeatTypes');
-    return result.recordset as SeatType[];
+    return await prisma.seatType.findMany();
 };
 
 export const getSeatTypeById = async (id: string): Promise<SeatType | null> => {
-    const pool = await getConnection();
-    const result = await pool.request()
-        .input('id', sql.UniqueIdentifier, id)
-        .execute('GetSeatTypeById');
-    return (result.recordset[0] as SeatType) || null;
+    return await prisma.seatType.findUnique({
+        where: { id }
+    });
 };
 
-export const createSeatType = async (seatType: Omit<SeatType, 'id'>): Promise<SeatType> => {
-    const pool = await getConnection();
-    const result = await pool.request()
-        .input('event_id', sql.UniqueIdentifier, seatType.event_id)
-        .input('name', sql.NVarChar(100), seatType.name)
-        .input('price', sql.Decimal(10, 2), seatType.price)
-        .execute('CreateSeatType');
-
-    return result.recordset[0] as SeatType;
+export const createSeatType = async (seatType: any): Promise<SeatType> => {
+    return await prisma.seatType.create({
+        data: {
+            event_id: seatType.event_id,
+            name: seatType.name,
+            price: seatType.price
+        }
+    });
 };
 
-export const updateSeatType = async (id: string, fields: Partial<Omit<SeatType, 'id'>>): Promise<SeatType | null> => {
-    const pool = await getConnection();
-    const result = await pool.request()
-        .input('id', sql.UniqueIdentifier, id)
-        .input('name', sql.NVarChar(100), fields.name || null)
-        .input('price', sql.Decimal(10, 2), fields.price || null)
-        .execute('UpdateSeatType');
-
-    return (result.recordset[0] as SeatType) || null;
+export const updateSeatType = async (id: string, fields: any): Promise<SeatType | null> => {
+    return await prisma.seatType.update({
+        where: { id },
+        data: fields
+    });
 };
 
 export const deleteSeatType = async (id: string): Promise<boolean> => {
-    const pool = await getConnection();
-    const result = await pool.request()
-        .input('id', sql.UniqueIdentifier, id)
-        .execute('DeleteSeatType');
-    return result.rowsAffected[0] > 0;
+    try {
+        await prisma.seatType.delete({
+            where: { id }
+        });
+        return true;
+    } catch {
+        return false;
+    }
 };
 
 export const getSeatTypesByEventId = async (eventId: string): Promise<SeatType[]> => {
-    const pool = await getConnection();
-    const result = await pool.request()
-        .input('event_id', sql.UniqueIdentifier, eventId)
-        .execute('GetSeatTypesByEventId');
-    return result.recordset as SeatType[];
+    return await prisma.seatType.findMany({
+        where: { event_id: eventId }
+    });
 };
 
 export const assignSeatTypeByRectangle = async (
@@ -60,13 +53,24 @@ export const assignSeatTypeByRectangle = async (
     x2: number,
     y2: number
 ): Promise<void> => {
-    const pool = await getConnection();
-    await pool.request()
-        .input('event_id', sql.UniqueIdentifier, eventId)
-        .input('seat_type_name', sql.NVarChar(100), seatTypeName)
-        .input('x1', sql.Int, x1)
-        .input('y1', sql.Int, y1)
-        .input('x2', sql.Int, x2)
-        .input('y2', sql.Int, y2)
-        .execute('AssignSeatTypeByRectangle');
+    const seatType = await prisma.seatType.findFirst({
+        where: {
+            event_id: eventId,
+            name: seatTypeName
+        }
+    });
+
+    if (!seatType) throw new Error('Seat type not found');
+
+    await prisma.seat.updateMany({
+        where: {
+            event_id: eventId,
+            status: 'AVAILABLE',
+            x_coordinate: { gte: x1, lte: x2 },
+            y_coordinate: { gte: y1, lte: y2 }
+        },
+        data: {
+            seat_type_id: seatType.id
+        }
+    });
 };

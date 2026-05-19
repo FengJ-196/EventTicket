@@ -1,20 +1,32 @@
-import { getConnection, sql } from '../db';
+import prisma from '../lib/prisma';
+import { User } from '@prisma/client';
 
-export const register = async (name: string, userName: string, password: string): Promise<User> => {
-    const pool = await getConnection();
-    const result = await pool.request()
-        .input('name', sql.NVarChar(100), name)
-        .input('userName', sql.NVarChar(100), userName)
-        .input('password', sql.NVarChar(100), password)
-        .execute('RegisterUser');
-    return result.recordset[0] as User;
+export const getUserByUserName = async (userName: string): Promise<User | null> => {
+    return await prisma.user.findUnique({
+        where: { userName }
+    });
 };
 
-export const login = async (userName: string, password: string): Promise<User | null> => {
-    const pool = await getConnection();
-    const result = await pool.request()
-        .input('userName', sql.NVarChar(100), userName)
-        .input('password', sql.NVarChar(100), password)
-        .execute('LoginUser');
-    return (result.recordset[0] as User) || null;
+export const getUserById = async (id: string): Promise<User | null> => {
+    return await prisma.user.findUnique({
+        where: { id }
+    });
+};
+
+export const createUser = async (userData: any): Promise<User> => {
+    return await prisma.user.create({
+        data: {
+            name: userData.name,
+            userName: userData.userName,
+            password: userData.password,
+            role: userData.role || 'USER'
+        }
+    });
+};
+
+export const updateUser = async (id: string, fields: Partial<User>): Promise<User | null> => {
+    return await prisma.user.update({
+        where: { id },
+        data: fields
+    });
 };

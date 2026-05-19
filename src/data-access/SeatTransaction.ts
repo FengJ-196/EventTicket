@@ -1,8 +1,19 @@
-import { getConnection, sql } from '../db';
+import prisma from '../lib/prisma';
 
-export const getSeatTransactions = async (): Promise<DetailedSeatTransaction[]> => {
-    const pool = await getConnection();
-    const result = await pool.request()
-        .query('SELECT * FROM GetSeatTransactions() ORDER BY created_at DESC');
-    return result.recordset as DetailedSeatTransaction[];
+export const getSeatTransactions = async (): Promise<any[]> => {
+    return await prisma.seatTransaction.findMany({
+        include: {
+            user: {
+                select: { name: true, userName: true }
+            },
+            seat: {
+                include: {
+                    event: {
+                        select: { name: true }
+                    }
+                }
+            }
+        },
+        orderBy: { created_at: 'desc' }
+    });
 };
