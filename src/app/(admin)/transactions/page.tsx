@@ -20,7 +20,7 @@ export default function AdminTransactionsPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/admin/transactions')
+        fetch('/api/transactions')
             .then(res => res.json())
             .then(data => {
                 setTransactions(data);
@@ -51,7 +51,7 @@ export default function AdminTransactionsPage() {
                         <p className="text-gray-400 mt-2 italic text-sm font-medium">Real-time audit log of all ticketing activities</p>
                     </div>
                     <Link
-                        href="/admin/dashboard"
+                        href="/admin-dashboard"
                         className="px-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors shadow-lg text-sm font-bold"
                     >
                         &larr; Back to Dashboard

@@ -31,9 +31,9 @@ export default function LoginPage() {
                 throw new Error(data.error || 'Login failed');
             }
 
-            // Handle successful login
-            // ideally set a cookie or context auth state here
-            // For now, just redirect to home
+            // Save user details to localStorage so header and client pages can render correctly
+            localStorage.setItem('user', JSON.stringify(data.user));
+
             router.push('/');
             router.refresh(); // Refresh to update any server components if needed
         } catch (err: any) {
@@ -172,7 +172,7 @@ export default function LoginPage() {
                     <div className="mt-8 text-center">
                         <p className="text-slate-500 text-sm">
                             Don't have an account?{' '}
-                            <Link href="/auth/register" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
+                            <Link href="/register" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
                                 Create one now
                             </Link>
                         </p>

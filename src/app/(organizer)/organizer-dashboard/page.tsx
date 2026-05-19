@@ -101,7 +101,7 @@ export default function OrganizerDashboard() {
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-3xl font-bold text-gray-900">Your Events</h1>
                     <Link
-                        href="/organizer/create"
+                        href="/create-event"
                         className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold shadow-md transition flex items-center gap-2"
                     >
                         + Create New Event
@@ -112,7 +112,7 @@ export default function OrganizerDashboard() {
                     {events.length === 0 ? (
                         <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100">
                             <p className="text-gray-500 text-lg mb-4">You haven't created any events yet.</p>
-                            <Link href="/organizer/create" className="text-blue-600 font-bold hover:underline">Get Started</Link>
+                            <Link href="/create-event" className="text-blue-600 font-bold hover:underline">Get Started</Link>
                         </div>
                     ) : (
                         events.map(event => (
@@ -136,7 +136,7 @@ export default function OrganizerDashboard() {
                                     <div className="flex items-center gap-3">
                                         {(event.status === 'DRAFT' || event.status === 'PENDING') && (
                                             <Link
-                                                href={`/organizer/edit/${event.id}`}
+                                                href={`/edit-event/${event.id}`}
                                                 className="text-gray-600 hover:text-blue-600 text-sm font-medium border px-3 py-2 rounded-lg hover:border-blue-600 transition"
                                             >
                                                 Edit Event
@@ -145,7 +145,7 @@ export default function OrganizerDashboard() {
 
                                         {(event.status === 'VERIFY' || event.status === 'PUBLISHED') && (
                                             <Link
-                                                href={`/organizer/manage-seats/${event.id}`}
+                                                href={`/manage-seats/${event.id}`}
                                                 className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-sm font-bold border border-indigo-200 px-3 py-2 rounded-lg transition"
                                             >
                                                 Manage Seats

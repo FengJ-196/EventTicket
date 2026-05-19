@@ -266,7 +266,7 @@ export default function ManageSeatsPage({ params: paramsPromise }: { params: Pro
                 <div className="container mx-auto px-6 h-20 flex justify-between items-center">
                     <div className="flex items-center gap-6">
                         <Link
-                            href="/organizer/dashboard"
+                            href="/organizer-dashboard"
                             className="bg-slate-100 hover:bg-slate-200 p-2.5 rounded-xl transition-colors"
                         >
                             <ChevronLeft className="w-6 h-6 text-slate-600" />
@@ -283,7 +283,7 @@ export default function ManageSeatsPage({ params: paramsPromise }: { params: Pro
                     </div>
 
                     <button
-                        onClick={() => router.push(`/organizer/edit/${eventId}`)}
+                        onClick={() => router.push(`/edit-event/${eventId}`)}
                         disabled={isPublished}
                         className={clsx(
                             "text-sm font-semibold px-4 py-2.5 rounded-xl transition-all border",
