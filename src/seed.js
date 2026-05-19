@@ -137,7 +137,35 @@ async function seed() {
       },
     });
 
-    const eventsList = [event1, event2, event3, event4, event5];
+    // Event 6: Retro Gaming Tournament (VERIFY)
+    const event6 = await prisma.event.create({
+      data: {
+        name: 'Retro Gaming Tournament',
+        status: 'VERIFY',
+        address: 'Pixel Arcade Hall',
+        event_date: new Date('2027-02-18T13:00:00Z'),
+        rows: 8,
+        columns: 8,
+        available_seats: 64,
+        organizer_id: organizer.id,
+      },
+    });
+
+    // Event 7: Summer Jazz Night (CANCELLED)
+    const event7 = await prisma.event.create({
+      data: {
+        name: 'Summer Jazz Night',
+        status: 'CANCELLED',
+        address: 'Bayside Amphitheater',
+        event_date: new Date('2027-03-05T19:00:00Z'),
+        rows: 10,
+        columns: 10,
+        available_seats: 100,
+        organizer_id: organizer.id,
+      },
+    });
+
+    const eventsList = [event1, event2, event3, event4, event5, event6, event7];
 
     // 4. Create Seat Types
     console.log('💳 Creating seat types & grids...');

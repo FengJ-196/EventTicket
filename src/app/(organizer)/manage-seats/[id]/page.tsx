@@ -374,7 +374,7 @@ export default function ManageSeatsPage({ params: paramsPromise }: { params: Pro
                                         <div className="flex justify-between items-center">
                                             <div>
                                                 <span className="block font-bold text-slate-800 text-sm">{st.name}</span>
-                                                <span className="text-sm font-bold text-indigo-600">${st.price.toFixed(2)}</span>
+                                                <span className="text-sm font-bold text-indigo-600">${Number(st.price).toFixed(2)}</span>
                                             </div>
                                             {!isPublished && (
                                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -492,7 +492,7 @@ export default function ManageSeatsPage({ params: paramsPromise }: { params: Pro
                                     >
                                         <option value="">Choose Price Tier...</option>
                                         {seatTypes.map(st => (
-                                            <option key={st.id} value={st.name}>{st.name} — ${st.price.toFixed(2)}</option>
+                                            <option key={st.id} value={st.name}>{st.name} — ${Number(st.price).toFixed(2)}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -670,7 +670,7 @@ export default function ManageSeatsPage({ params: paramsPromise }: { params: Pro
                                         ></div>
                                         <div className="flex flex-col">
                                             <span className="text-xs font-black text-slate-700 leading-tight">{st.name}</span>
-                                            <span className="text-[10px] font-bold text-indigo-500">${st.price.toFixed(2)}</span>
+                                            <span className="text-[10px] font-bold text-indigo-500">${Number(st.price).toFixed(2)}</span>
                                         </div>
                                     </div>
                                 ))}
