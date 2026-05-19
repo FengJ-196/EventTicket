@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+  ORGANIZER
+}
+
+enum EventStatus {
+  DRAFT
+  PENDING
+  VERIFY
+  PUBLISHED
+  CANCELLED
+}
+
+enum SeatStatus {
+  AVAILABLE
+  BOOKED
+  ON_HOLD
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  CASH
+  BANK_TRANSFER
+  E_WALLET
+}
+
+enum TicketStatus {
+  VALID
+  REFUNDED
+  SCANNED
+}
+
+model User {
+  id              String            @id @default(uuid())
+  name            String            @db.VarChar(100)
+  userName        String            @unique @db.VarChar(100) @map("user_name")
+  password        String            @db.VarChar(255)
+  role            Role              @default(USER)
+  organizedEvents Event[]           @relation("OrganizerEvents")
+  seats           Seat[]
+  payments        Payment[]
+  transactions    SeatTransaction[]
+
+  @@map("users")
+}
+
+model Event {
+  id              String      @id @default(uuid())
+  name            String      @db.VarChar(200)
+  status          EventStatus @default(DRAFT)
+  address         String?     @db.VarChar(255)
+  event_date      DateTime    @map("event_date")
+  rows            Int?
+  columns         Int?
+  available_seats Int         @default(0) @map("available_seats")
+  organizer_id    String      @map("organizer_id")
+  organizer       User        @relation("OrganizerEvents", fields: [organizer_id], references: [id])
+  seatTypes       SeatType[]
+  seats           Seat[]
+
+  @@map("event")
+}
+
+model SeatType {
+  id       String  @id @default(uuid())
+  name     String  @db.VarChar(100)
+  price    Decimal @db.Decimal(10, 2)
+  event_id String  @map("event_id")
+  event    Event   @relation(fields: [event_id], references: [id])
+  seats    Seat[]
+
+  @@unique([event_id, name])
+  @@map("seat_type")
+}
+
+model Seat {
+  id               String            @id @default(uuid())
+  event_id         String            @map("event_id")
+  x_coordinate     Int               @map("x_coordinate")
+  y_coordinate     Int               @map("y_coordinate")
+  seat_type_id     String            @map("seat_type_id")
+  user_id          String?           @map("user_id")
+  status           SeatStatus
+  hold_expires_at  DateTime?         @map("hold_expires_at")
+  event            Event             @relation(fields: [event_id], references: [id])
+  seatType         SeatType          @relation(fields: [seat_type_id], references: [id])
+  user             User?             @relation(fields: [user_id], references: [id])
+  tickets          Ticket[]
+  seatTransactions SeatTransaction[]
+
+  @@unique([event_id, x_coordinate, y_coordinate])
+  @@map("seat")
+}
+
+model Payment {
+  id                 String        @id @default(uuid())
+  amount             Decimal       @db.Decimal(10, 2)
+  payment_date       DateTime      @default(now()) @map("payment_date")
+  user_id            String        @map("user_id")
+  method             PaymentMethod
+  external_reference String?       @db.VarChar(255) @map("external_reference")
+  status             String        @default("COMPLETED")
+  user               User          @relation(fields: [user_id], references: [id])
+  tickets            Ticket[]
+
+  @@map("payment")
+}
+
+model Ticket {
+  id               String            @id @default(uuid())
+  seat_id          String            @map("seat_id")
+  payment_id       String            @map("payment_id")
+  price            Decimal           @db.Decimal(10, 2)
+  status           TicketStatus      @default(VALID)
+  seat             Seat              @relation(fields: [seat_id], references: [id])
+  payment          Payment           @relation(fields: [payment_id], references: [id])
+  seatTransactions SeatTransaction[]
+
+  @@map("ticket")
+}
+
+model SeatTransaction {
+  id         String   @id @default(uuid())
+  seat_id    String   @map("seat_id")
+  user_id    String   @map("user_id")
+  action     String   @db.VarChar(20)
+  ticket_id  String?  @map("ticket_id")
+  created_at DateTime @default(now()) @map("created_at")
+  seat       Seat     @relation(fields: [seat_id], references: [id])
+  user       User     @relation(fields: [user_id], references: [id])
+  ticket     Ticket?  @relation(fields: [ticket_id], references: [id])
+
+  @@map("seat_transaction")
+}

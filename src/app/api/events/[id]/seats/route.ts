@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getEventSeatMap } from '@/lib/models/Event';
-import { releaseExpiredHolds } from '@/lib/models/Seat';
+import { getSeatsByEventId, releaseExpiredHolds } from '@/data-access/Seat';
 
 export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
     try {
@@ -11,7 +10,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
         // Ensure expired holds are released before fetching
         await releaseExpiredHolds();
 
-        const seats = await getEventSeatMap(eventId);
+        const seats = await getSeatsByEventId(eventId);
         return NextResponse.json(seats);
     } catch (error: any) {
         console.error('Get seats error:', error);

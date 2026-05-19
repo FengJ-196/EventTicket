@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSeatTransactions } from '@/lib/models/SeatTransaction';
+import { getSeatTransactions } from '@/data-access/SeatTransaction';
 
 export async function GET() {
     try {

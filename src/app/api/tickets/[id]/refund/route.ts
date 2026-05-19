@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { refundTicket } from '@/lib/models/Ticket';
+import { refundTicket } from '@/data-access/Ticket';
 
 export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
     try {
@@ -12,14 +12,16 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
             return NextResponse.json({ error: 'Missing ticket ID or user ID' }, { status: 400 });
         }
 
-        await refundTicket(ticketId, userId);
+        const success = await refundTicket(ticketId, userId);
+
+        if (!success) {
+            return NextResponse.json({ error: 'Refund failed. Ticket may be invalid or already refunded.' }, { status: 400 });
+        }
 
         return NextResponse.json({ message: 'Ticket refunded successfully' });
 
     } catch (error: any) {
         console.error('Refund ticket error:', error);
-        // Extract SQL error message if possible
-        const msg = error.message || 'Internal server error';
-        return NextResponse.json({ error: msg }, { status: 500 });
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

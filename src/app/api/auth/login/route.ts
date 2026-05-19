@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getConnection, sql } from '@/lib/db';
+import { getUserByUserName } from '@/data-access/User';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'super-secret-refresh-key';
 
 export async function POST(req: Request) {
     try {
@@ -10,20 +15,29 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
         }
 
-        const pool = await getConnection();
+        const user = await getUserByUserName(userName);
 
-        const result = await pool.request()
-            .input('userName', sql.NVarChar(100), userName)
-            .input('password', sql.NVarChar(100), password)
-            .execute('LoginUser');
-
-        const user = result.recordset[0];
-
-        if (!user) {
+        if (!user || !user.password) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
-        return NextResponse.json({ success: true, user });
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordValid) {
+            return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+        }
+
+        const { password: _, ...userWithoutPassword } = user;
+
+        const accessToken = jwt.sign({ id: user.id, userName: user.userName, role: user.role }, JWT_SECRET, { expiresIn: '15m' });
+        const refreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: '7d' });
+
+        const response = NextResponse.json({ success: true, user: userWithoutPassword, accessToken, refreshToken });
+        
+        response.cookies.set('accessToken', accessToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/' });
+        response.cookies.set('refreshToken', refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/' });
+
+        return response;
 
     } catch (error: any) {
         console.error('Login error:', error);

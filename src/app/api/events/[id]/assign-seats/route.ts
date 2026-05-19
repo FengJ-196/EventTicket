@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { assignSeatTypeByRectangle } from '@/lib/models/SeatType';
+import { assignSeatTypeByRectangle } from '@/data-access/SeatType';
 
 export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
     try {

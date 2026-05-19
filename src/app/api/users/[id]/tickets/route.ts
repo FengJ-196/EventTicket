@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { viewPurchasedTickets } from '@/lib/models/Ticket';
+import { getTicketsByUserId } from '@/data-access/Ticket';
 
 export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
     try {
@@ -10,7 +10,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
             return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
         }
 
-        const tickets = await viewPurchasedTickets(userId);
+        const tickets = await getTicketsByUserId(userId);
         return NextResponse.json(tickets);
     } catch (error) {
         console.error('Fetch tickets error:', error);
