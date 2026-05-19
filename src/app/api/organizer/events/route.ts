@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getConnection, sql } from '@/lib/db';
+import { getEventsByOrganizerId } from '@/data-access/Event';
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -10,12 +10,8 @@ export async function GET(req: Request) {
     }
 
     try {
-        const pool = await getConnection();
-        const result = await pool.request()
-            .input('organizer_id', sql.UniqueIdentifier, organizerId)
-            .query('SELECT * FROM Event WHERE organizer_id = @organizer_id ORDER BY event_date DESC');
-
-        return NextResponse.json(result.recordset);
+        const events = await getEventsByOrganizerId(organizerId);
+        return NextResponse.json(events);
     } catch (error) {
         console.error('Fetch organizer events error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

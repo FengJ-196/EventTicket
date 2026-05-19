@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { updateSeatType, deleteSeatType } from '@/lib/models/SeatType';
+import { updateSeatType, deleteSeatType } from '@/data-access/SeatType';
 
 export async function PATCH(req: Request, props: { params: Promise<{ id: string, seatTypeId: string }> }) {
     try {
         const params = await props.params;
-        const { id: eventId, seatTypeId } = params;
+        const { seatTypeId } = params;
         const body = await req.json();
 
-        const updated = await updateSeatType(seatTypeId, { ...body, event_id: eventId });
+        const updated = await updateSeatType(seatTypeId, body);
         if (!updated) return NextResponse.json({ error: 'Seat type not found' }, { status: 404 });
 
         return NextResponse.json(updated);

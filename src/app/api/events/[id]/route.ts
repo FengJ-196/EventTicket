@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getConnection, sql } from '@/lib/db';
+import { getEventById, updateEvent } from '@/data-access/Event';
 
 export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
     try {
@@ -9,12 +9,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
             return NextResponse.json({ error: 'Event ID required' }, { status: 400 });
         }
 
-        const pool = await getConnection();
-        const result = await pool.request()
-            .input('eventId', sql.UniqueIdentifier, id)
-            .execute('GetEventDetails');
-
-        const event = result.recordset[0];
+        const event = await getEventById(id);
 
         if (!event) {
             return NextResponse.json({ error: 'Event not found' }, { status: 404 });
@@ -28,18 +23,14 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
     }
 }
 
-import { updateEvent } from '@/lib/models/Event';
-
 export async function PUT(req: Request, props: { params: Promise<{ id: string }> }) {
     try {
         const params = await props.params;
         const id = params.id;
         const body = await req.json();
 
-        // Validate basic fields
         if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-        // Update using the model helper
         const updated = await updateEvent(id, body);
 
         if (!updated) {

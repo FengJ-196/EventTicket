@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSeatTypesByEventId, createSeatType } from '@/lib/models/SeatType';
+import { getSeatTypesByEventId, createSeatType } from '@/data-access/SeatType';
 
 export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
     try {
